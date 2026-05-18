@@ -82,6 +82,7 @@ export default function Settings() {
     queryKey: ['settings', salon?.id],
     queryFn: async () => {
       const { data } = await api.get(`/settings/${salon.id}`)
+      console.log('Settings response:', data)
       return data
     },
     enabled: !!salon?.id,
