@@ -89,10 +89,11 @@ export default function Settings() {
 
   // Populate form when data loads
   useEffect(() => {
-    if (data?.salon) {
-      setName(data.salon.name || '')
-      setOwnerName(data.salon.owner_name || '')
-      setCity(data.salon.city || '')
+    const s = data?.salon ?? data
+    if (s && typeof s === 'object' && s.name) {
+      setName(s.name || '')
+      setOwnerName(s.owner_name || '')
+      setCity(s.city || '')
       setIsDirty(false)
     }
   }, [data])
@@ -110,8 +111,8 @@ export default function Settings() {
         city: city.trim(),
       }),
     onSuccess: ({ data: res }) => {
-      // Update the auth store so sidebar/topbar reflect new name
-      loginStore(res.salon, token)
+      const updated = res?.salon ?? res
+      loginStore(updated, token)
       toast.success('Settings saved!')
       setIsDirty(false)
     },
@@ -147,7 +148,18 @@ export default function Settings() {
     )
   }
 
-  const s = data.salon
+  // FIX 1: handle both { salon: {...} } and {...} response shapes
+  const s = data?.salon ?? data
+
+  if (!s || typeof s !== 'object') {
+    return (
+      <div style={styles.errorWrap}>
+        <AlertCircle size={32} color="#f87171" />
+        <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Invalid settings data</p>
+      </div>
+    )
+  }
+
   const tierColor = TIER_COLORS[s.subscription_tier] || '#7c5cfc'
 
   return (
@@ -161,7 +173,6 @@ export default function Settings() {
       <div style={styles.columns}>
         {/* Left — Edit form */}
         <div style={styles.leftCol}>
-          {/* Edit profile */}
           <div className="fade-up" style={{ ...styles.panel, opacity: 0, animationDelay: '60ms' }}>
             <div style={styles.panelHeader}>
               <h2 style={styles.panelTitle}>Salon Profile</h2>
@@ -195,7 +206,7 @@ export default function Settings() {
               <InputField
                 label="Phone Number"
                 icon={Phone}
-                value={s.phone}
+                value={s.phone || ''}
                 onChange={() => {}}
                 placeholder=""
                 disabled={true}
@@ -230,8 +241,10 @@ export default function Settings() {
               color: tierColor,
             }}>
               <CheckCircle size={16} />
-              {s.subscription_tier?.charAt(0).toUpperCase() + s.subscription_tier?.slice(1)} Plan
-              {' · '}{s.subscription_status}
+              {/* FIX 2: wrap text in span to avoid render error */}
+              <span>
+                {`${s.subscription_tier?.charAt(0).toUpperCase()}${s.subscription_tier?.slice(1)} Plan · ${s.subscription_status}`}
+              </span>
             </div>
             <div style={styles.infoList}>
               <InfoRow
@@ -247,7 +260,7 @@ export default function Settings() {
               <InfoRow
                 icon={Building2}
                 label="Member since"
-                value={formatDate(s.created_at)}
+                value={s.created_at ? formatDate(s.created_at) : '—'}
               />
             </div>
           </div>
@@ -257,18 +270,18 @@ export default function Settings() {
             <h2 style={styles.panelTitle}>Credits Summary</h2>
             <div style={styles.creditsRow}>
               <div style={styles.creditStat}>
-                <div style={styles.creditStatVal}>{s.ai_credits_remaining}</div>
+                <div style={styles.creditStatVal}>{s.ai_credits_remaining ?? 0}</div>
                 <div style={styles.creditStatLabel}>Remaining</div>
               </div>
               <div style={styles.creditDivider} />
               <div style={styles.creditStat}>
-                <div style={styles.creditStatVal}>{s.ai_credits_total}</div>
+                <div style={styles.creditStatVal}>{s.ai_credits_total ?? 0}</div>
                 <div style={styles.creditStatLabel}>Total</div>
               </div>
               <div style={styles.creditDivider} />
               <div style={styles.creditStat}>
                 <div style={styles.creditStatVal}>
-                  {s.ai_credits_total - s.ai_credits_remaining}
+                  {(s.ai_credits_total ?? 0) - (s.ai_credits_remaining ?? 0)}
                 </div>
                 <div style={styles.creditStatLabel}>Used</div>
               </div>
@@ -289,13 +302,14 @@ export default function Settings() {
             <p style={styles.supportText}>
               Need help with your account, WhatsApp setup, or billing?
             </p>
-            
+            {/* FIX 3: broken <a> tag corrected */}
+            <a
               href="https://wa.me/919999999999"
               target="_blank"
               rel="noreferrer"
               style={styles.supportBtn}
-             <a>
-              Contact SalonIQ Support on WhatsApp
+            >
+              Contact StylZap Support on WhatsApp
             </a>
           </div>
         </div>
@@ -408,7 +422,6 @@ const styles = {
   creditsRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0',
   },
   creditStat: {
     flex: 1,
