@@ -78,11 +78,10 @@ export default function Settings() {
   const [city, setCity] = useState('')
   const [isDirty, setIsDirty] = useState(false)
 
-  const { data, isLoading, isError, error } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['settings', salon?.id],
     queryFn: async () => {
       const { data } = await api.get(`/settings/${salon.id}`)
-      console.log('Settings response:', data)
       return data
     },
     enabled: !!salon?.id,
