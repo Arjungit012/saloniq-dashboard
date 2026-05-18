@@ -294,7 +294,7 @@ export default function Settings() {
               target="_blank"
               rel="noreferrer"
               style={styles.supportBtn}
-            >
+             <a>
               Contact SalonIQ Support on WhatsApp
             </a>
           </div>
