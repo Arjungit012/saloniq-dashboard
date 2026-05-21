@@ -78,7 +78,7 @@ export default function Login() {
                 onFocus={() => setFocused('phone')}
                 onBlur={() => setFocused(null)}
                 style={styles.input}
-                maxLength={10}
+                maxLength={15}
                 autoComplete="tel"
               />
             </div>
