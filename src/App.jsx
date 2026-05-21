@@ -9,6 +9,9 @@ import Dashboard from './pages/Dashboard'
 import Bookings from './pages/Bookings'
 import Credits from './pages/Credits'
 import Settings from './pages/Settings'
+import AdminLogin from './pages/admin/AdminLogin'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import useAdminStore from './store/adminStore'
 
 function AppLayout() {
   return (
@@ -30,6 +33,13 @@ function AppLayout() {
   )
 }
 
+function AdminRoute() {
+  const isAuthenticated = useAdminStore((s) => s.isAuthenticated)
+  return isAuthenticated
+    ? <AdminDashboard />
+    : <Navigate to="/admin" replace />
+}
+
 export default function App() {
   const hydrate = useAuthStore((s) => s.hydrate)
 
@@ -43,6 +53,8 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/*" element={<AppLayout />} />
       </Route>
+      <Route path="/admin" element={<AdminLogin />} />
+      <Route path="/admin/dashboard" element={<AdminRoute />} />
     </Routes>
   )
 }
