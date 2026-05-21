@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Zap, TrendingUp, CreditCard,
   CheckCircle, AlertCircle, Clock,
-  IndianRupee,
+  IndianRupee, ShoppingBag,
 } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import api from '../api/axios'
@@ -42,6 +42,13 @@ const PLANS = [
   },
 ]
 
+// ─── Extra credit packs ───────────────────────────────────
+const CREDIT_PACKS = [
+  { pack: '50', images: 50, amount: 450, label: '50 Credits', sub: '₹9/image' },
+  { pack: '100', images: 100, amount: 800, label: '100 Credits', sub: '₹8/image' },
+  { pack: '200', images: 200, amount: 1400, label: '200 Credits', sub: '₹7/image' },
+]
+
 // ─── Helpers ─────────────────────────────────────────────
 function formatDate(str) {
   try { return format(parseISO(str), 'dd MMM yyyy') } catch { return str }
@@ -52,9 +59,69 @@ function formatAmount(amount) {
 }
 
 const paymentStatusStyle = {
-  captured: { color: '#22d3a0', label: 'Paid' },
-  pending:  { color: '#f5c842', label: 'Pending' },
-  failed:   { color: '#f87171', label: 'Failed' },
+  succeeded: { color: '#22d3a0', label: 'Paid' },
+  captured:  { color: '#22d3a0', label: 'Paid' },
+  pending:   { color: '#f5c842', label: 'Pending' },
+  failed:    { color: '#f87171', label: 'Failed' },
+}
+
+// ─── Load Razorpay script ─────────────────────────────────
+function loadRazorpay() {
+  return new Promise((resolve) => {
+    if (window.Razorpay) return resolve(true)
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
+}
+
+// ─── Open Razorpay Checkout ───────────────────────────────
+async function openRazorpay({ orderId, amount, salonName, description, onSuccess, onFailure }) {
+  const loaded = await loadRazorpay()
+  if (!loaded) {
+    toast.error('Failed to load payment gateway. Please try again.')
+    return
+  }
+
+  const options = {
+    key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+    amount,
+    currency: 'INR',
+    name: 'StylZap',
+    description,
+    order_id: orderId,
+    handler: async (response) => {
+      try {
+        // Verify payment on backend
+        await api.post('/payment/verify', {
+          razorpay_order_id: response.razorpay_order_id,
+          razorpay_payment_id: response.razorpay_payment_id,
+          razorpay_signature: response.razorpay_signature,
+        })
+        onSuccess()
+      } catch {
+        toast.error('Payment verification failed. Contact support.')
+        onFailure?.()
+      }
+    },
+    prefill: {
+      name: salonName,
+    },
+    theme: {
+      color: '#7c5cfc',
+    },
+    modal: {
+      ondismiss: () => {
+        toast('Payment cancelled', { icon: '⚠️' })
+        onFailure?.()
+      }
+    }
+  }
+
+  const rzp = new window.Razorpay(options)
+  rzp.open()
 }
 
 // ─── Sub-components ───────────────────────────────────────
@@ -79,7 +146,6 @@ function CreditMeter({ remaining, total }) {
         </div>
       </div>
 
-      {/* Track */}
       <div style={meterStyles.track}>
         <div style={{
           ...meterStyles.fill,
@@ -89,7 +155,6 @@ function CreditMeter({ remaining, total }) {
         }} />
       </div>
 
-      {/* Stats row */}
       <div style={meterStyles.statsRow}>
         <div style={meterStyles.stat}>
           <Zap size={13} color={color} />
@@ -149,21 +214,46 @@ function PlanCard({ plan, currentTier, onUpgrade, loading }) {
       </div>
 
       <button
-        onClick={() => !isCurrent && onUpgrade(plan)}
+        onClick={() => !isCurrent && !loading && onUpgrade(plan)}
         disabled={isCurrent || loading}
         style={{
           ...planStyles.btn,
           background: isCurrent ? 'var(--bg-hover)' : plan.glow,
           color: isCurrent ? 'var(--text-muted)' : plan.color,
           border: `1px solid ${isCurrent ? 'var(--border)' : plan.border}`,
-          cursor: isCurrent ? 'default' : 'pointer',
+          cursor: isCurrent || loading ? 'default' : 'pointer',
+          opacity: loading ? 0.7 : 1,
         }}
       >
         {isCurrent ? (
           <><CheckCircle size={14} /> Active</>
+        ) : loading ? (
+          <>Processing...</>
         ) : (
           <>Upgrade to {plan.label}</>
         )}
+      </button>
+    </div>
+  )
+}
+
+function CreditPackCard({ pack, onBuy, loading }) {
+  return (
+    <div style={packStyles.card}>
+      <div style={packStyles.label}>{pack.label}</div>
+      <div style={packStyles.amount}>₹{pack.amount.toLocaleString('en-IN')}</div>
+      <div style={packStyles.sub}>{pack.sub}</div>
+      <button
+        onClick={() => !loading && onBuy(pack)}
+        disabled={loading}
+        style={{
+          ...packStyles.btn,
+          opacity: loading ? 0.7 : 1,
+          cursor: loading ? 'default' : 'pointer',
+        }}
+      >
+        <ShoppingBag size={13} />
+        {loading ? 'Processing...' : 'Buy Now'}
       </button>
     </div>
   )
@@ -178,7 +268,7 @@ function PaymentRow({ payment }) {
       </div>
       <div style={payStyles.info}>
         <div style={payStyles.type}>
-          {payment.type?.replace('_', ' ') || 'Payment'}
+          {payment.type?.replace(/_/g, ' ') || 'Payment'}
         </div>
         <div style={payStyles.date}>
           <Clock size={11} color="var(--text-muted)" />
@@ -232,7 +322,9 @@ function UsageChart({ data }) {
 // ─── Main page ────────────────────────────────────────────
 export default function Credits() {
   const salon = useAuthStore((s) => s.salon)
+  const queryClient = useQueryClient()
   const [upgradeLoading, setUpgradeLoading] = useState(false)
+  const [packLoading, setPackLoading] = useState(null)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['credits', salon?.id],
@@ -243,15 +335,57 @@ export default function Credits() {
     enabled: !!salon?.id,
   })
 
+  // ── Upgrade subscription ──────────────────────────────────
   const handleUpgrade = async (plan) => {
     setUpgradeLoading(true)
     try {
-      toast.success(`Redirecting to upgrade to ${plan.label}...`)
-      // TODO: wire Razorpay subscription payment here in Week 4
-      setTimeout(() => setUpgradeLoading(false), 1500)
-    } catch {
-      toast.error('Failed to start upgrade')
+      const { data } = await api.post('/payment/subscription', {
+        salonId: salon.id,
+        tier: plan.key,
+      })
+
+      await openRazorpay({
+        orderId: data.orderId,
+        amount: data.amount,
+        salonName: salon.name,
+        description: `StylZap ${plan.label} Plan — ${plan.credits} AI credits/month`,
+        onSuccess: () => {
+          toast.success(`🎉 Upgraded to ${plan.label}! Credits added.`)
+          queryClient.invalidateQueries(['credits', salon.id])
+          setUpgradeLoading(false)
+        },
+        onFailure: () => setUpgradeLoading(false),
+      })
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to create order')
       setUpgradeLoading(false)
+    }
+  }
+
+  // ── Buy extra credit pack ─────────────────────────────────
+  const handleBuyPack = async (pack) => {
+    setPackLoading(pack.pack)
+    try {
+      const { data } = await api.post('/payment/credits', {
+        salonId: salon.id,
+        pack: pack.pack,
+      })
+
+      await openRazorpay({
+        orderId: data.orderId,
+        amount: data.amount,
+        salonName: salon.name,
+        description: `StylZap ${pack.images} Extra AI Credits`,
+        onSuccess: () => {
+          toast.success(`✅ ${pack.images} credits added to your account!`)
+          queryClient.invalidateQueries(['credits', salon.id])
+          setPackLoading(null)
+        },
+        onFailure: () => setPackLoading(null),
+      })
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to create order')
+      setPackLoading(null)
     }
   }
 
@@ -314,18 +448,21 @@ export default function Credits() {
       </div>
 
       {/* Extra credits */}
-      <div className="fade-up" style={{ ...styles.extraCredits, opacity: 0, animationDelay: '160ms' }}>
-        <div>
-          <div style={styles.extraTitle}>Need more credits?</div>
-          <div style={styles.extraSub}>Buy extra AI credits at ₹10/image anytime</div>
+      <div className="fade-up" style={{ opacity: 0, animationDelay: '160ms' }}>
+        <h2 style={styles.sectionTitle}>Buy Extra Credits</h2>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px', marginTop: '-8px' }}>
+          Top up anytime — credits never expire
+        </p>
+        <div style={styles.packsGrid}>
+          {CREDIT_PACKS.map((pack) => (
+            <CreditPackCard
+              key={pack.pack}
+              pack={pack}
+              onBuy={handleBuyPack}
+              loading={packLoading === pack.pack}
+            />
+          ))}
         </div>
-        <button
-          style={styles.extraBtn}
-          onClick={() => toast.success('Razorpay top-up coming in Week 4!')}
-        >
-          <Zap size={15} />
-          Buy Extra Credits
-        </button>
       </div>
 
       {/* Usage chart + payments */}
@@ -394,39 +531,10 @@ const styles = {
     gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
     gap: '16px',
   },
-  extraCredits: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    background: 'var(--bg-card)',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius-lg)',
-    padding: '20px 24px',
-  },
-  extraTitle: {
-    fontFamily: "'Syne', sans-serif",
-    fontSize: '15px',
-    fontWeight: 700,
-    color: 'var(--text-primary)',
-    marginBottom: '4px',
-  },
-  extraSub: {
-    fontSize: '13px',
-    color: 'var(--text-muted)',
-  },
-  extraBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '10px 20px',
-    background: 'var(--accent-glow)',
-    border: '1px solid var(--accent)',
-    borderRadius: 'var(--radius-md)',
-    color: 'var(--accent-light)',
-    fontSize: '14px',
-    fontWeight: 600,
-    cursor: 'pointer',
-    fontFamily: "'DM Sans', sans-serif",
+  packsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+    gap: '16px',
   },
   columns: {
     display: 'grid',
@@ -619,6 +727,52 @@ const planStyles = {
   },
 }
 
+const packStyles = {
+  card: {
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-lg)',
+    padding: '20px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    alignItems: 'flex-start',
+  },
+  label: {
+    fontFamily: "'Syne', sans-serif",
+    fontSize: '15px',
+    fontWeight: 700,
+    color: 'var(--text-primary)',
+  },
+  amount: {
+    fontFamily: "'Syne', sans-serif",
+    fontSize: '24px',
+    fontWeight: 800,
+    color: 'var(--accent-light)',
+    lineHeight: 1,
+  },
+  sub: {
+    fontSize: '12px',
+    color: 'var(--text-muted)',
+    marginBottom: '4px',
+  },
+  btn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '9px 18px',
+    background: 'var(--accent-glow)',
+    border: '1px solid var(--accent)',
+    borderRadius: 'var(--radius-md)',
+    color: 'var(--accent-light)',
+    fontSize: '13px',
+    fontWeight: 600,
+    fontFamily: "'DM Sans', sans-serif",
+    transition: 'opacity 0.15s ease',
+    marginTop: 'auto',
+  },
+}
+
 const payStyles = {
   row: {
     display: 'flex',
@@ -639,9 +793,7 @@ const payStyles = {
     justifyContent: 'center',
     flexShrink: 0,
   },
-  info: {
-    flex: 1,
-  },
+  info: { flex: 1 },
   type: {
     fontSize: '13px',
     fontWeight: 500,
@@ -656,9 +808,7 @@ const payStyles = {
     fontSize: '11px',
     color: 'var(--text-muted)',
   },
-  right: {
-    textAlign: 'right',
-  },
+  right: { textAlign: 'right' },
   amount: {
     fontFamily: "'Syne', sans-serif",
     fontSize: '14px',
