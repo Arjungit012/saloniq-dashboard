@@ -56,7 +56,7 @@ export default function Login() {
           <div style={styles.iconWrap}>
             <Scissors size={22} color="#7c5cfc" strokeWidth={1.8} />
           </div>
-          <h1 style={styles.title}>SalonIQ</h1>
+          <h1 style={styles.title}>StylZap</h1>
           <p style={styles.subtitle}>Sign in to your salon dashboard</p>
         </div>
 
@@ -149,7 +149,7 @@ export default function Login() {
             rel="noreferrer"
             style={styles.footerLink}
           >
-            Contact SalonIQ support
+            Contact StylZap support
           </a>
         </p>
       </div>

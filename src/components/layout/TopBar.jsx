@@ -21,7 +21,7 @@ export default function TopBar() {
   return (
     <header style={styles.topbar}>
       <div>
-        <h2 style={styles.title}>{pageTitles[pathname] || 'SalonIQ'}</h2>
+        <h2 style={styles.title}>{pageTitles[pathname] || ''}</h2>
         <p style={styles.date}>{today}</p>
       </div>
       <div style={styles.right}>

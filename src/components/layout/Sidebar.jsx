@@ -36,7 +36,7 @@ export default function Sidebar() {
           <Scissors size={18} color="#7c5cfc" />
         </div>
         <div>
-          <div style={styles.logoName}>SalonIQ</div>
+          <div style={styles.logoName}>StylZap</div>
           <div style={styles.logoSub}>Dashboard</div>
         </div>
       </div>
