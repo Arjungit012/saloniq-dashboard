@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   IndianRupee,
@@ -74,10 +75,30 @@ function CreditBar({ remaining, total }) {
   )
 }
 
+// ─── CHIME (defined outside component, no hooks needed) ───────────────────
+function playChime() {
+  try {
+    const ctx = new AudioContext()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.frequency.setValueAtTime(880, ctx.currentTime)
+    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1)
+    gain.gain.setValueAtTime(0.3, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6)
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 0.6)
+  } catch (e) {
+    console.warn('🔇 Chime failed:', e)
+  }
+}
+
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────
 export default function Dashboard() {
   const salon = useAuthStore((s) => s.salon)
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['dashboard', salon?.id],
     queryFn: async () => {
       const { data } = await api.get(`/dashboard/${salon.id}`)
@@ -86,6 +107,53 @@ export default function Dashboard() {
     enabled: !!salon?.id,
     refetchInterval: 60000,
   })
+
+  // ─── WEBSOCKET for new booking sound ────────────────────────────────────
+  useEffect(() => {
+    if (!salon?.id) return
+
+    const wsUrl = import.meta.env.VITE_API_URL
+      .replace('https://', 'wss://')
+      .replace('/api', '')
+
+    let ws
+    let reconnectTimer
+
+    function connect() {
+      ws = new WebSocket(`${wsUrl}?salonId=${salon.id}`)
+
+      ws.onopen = () => console.log('🔌 WS connected')
+
+      ws.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data)
+          if (msg.event === 'new_booking') {
+            playChime()
+            refetch() // refresh today's bookings count
+          }
+        } catch (err) {
+          console.warn('WS parse error', err)
+        }
+      }
+
+      ws.onclose = () => {
+        console.log('🔌 WS closed — reconnecting in 5s')
+        reconnectTimer = setTimeout(connect, 5000) // auto-reconnect
+      }
+
+      ws.onerror = (err) => {
+        console.warn('🔌 WS error', err)
+        ws.close()
+      }
+    }
+
+    connect()
+
+    return () => {
+      clearTimeout(reconnectTimer)
+      ws?.close()
+    }
+  }, [salon?.id])
 
   if (isLoading) {
     return (
@@ -106,7 +174,6 @@ export default function Dashboard() {
   }
 
   const { stats, todays_bookings, recent_generations } = data
-
   const monthName = new Date().toLocaleString('en-IN', { month: 'long' })
 
   return (
@@ -217,7 +284,6 @@ function GenerationRow({ gen, index }) {
       className="fade-up"
       style={{ ...genStyles.row, animationDelay: `${index * 60}ms` }}
     >
-      {/* Thumbnail */}
       <div style={genStyles.thumb}>
         {gen.output_image_url ? (
           <img
@@ -230,16 +296,12 @@ function GenerationRow({ gen, index }) {
           <ImageIcon size={16} color="var(--text-muted)" />
         )}
       </div>
-
-      {/* Info */}
       <div style={genStyles.info}>
         <div style={genStyles.styleName}>{gen.hairstyle_name || 'Hairstyle'}</div>
         <div style={genStyles.meta}>
           {gen.customer_name || gen.customer_phone} · {gen.face_shape}
         </div>
       </div>
-
-      {/* Time */}
       <div style={genStyles.time}>
         {timeAgo(gen.created_at)}
       </div>
@@ -264,219 +326,36 @@ function getTimeOfDay() {
   return 'evening'
 }
 
-useEffect(() => {
-  const salonId = authStore.salon?.id;
-  if (!salonId) return;
-
-  const wsUrl = import.meta.env.VITE_API_URL
-    .replace('https://', 'wss://')
-    .replace('/api', '');
-
-  const ws = new WebSocket(`${wsUrl}?salonId=${salonId}`);
-
-  ws.onmessage = (e) => {
-    const data = JSON.parse(e.data);
-    if (data.event === 'new_booking') {
-      playChime();
-      // optionally re-fetch dashboard stats
-    }
-  };
-
-  return () => ws.close();
-}, []);
-
 const styles = {
-  page: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '28px',
-    paddingBottom: '40px',
-  },
-  greeting: {
-    opacity: 0,
-  },
-  greetingTitle: {
-    fontSize: '24px',
-    fontWeight: 700,
-    color: 'var(--text-primary)',
-    marginBottom: '4px',
-  },
-  greetingSub: {
-    fontSize: '14px',
-    color: 'var(--text-muted)',
-  },
-  statsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '16px',
-  },
-  skeletonCard: {
-    background: 'var(--bg-card)',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius-lg)',
-    padding: '20px',
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '16px',
-  },
-  creditBar: {
-    background: 'var(--bg-card)',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius-lg)',
-    padding: '20px 24px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
-  },
-  creditBarRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  creditBarLabel: {
-    fontSize: '13px',
-    fontWeight: 600,
-    color: 'var(--text-secondary)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.06em',
-  },
-  creditBarPct: {
-    fontFamily: "'Syne', sans-serif",
-    fontSize: '14px',
-    fontWeight: 700,
-  },
-  creditTrack: {
-    height: '6px',
-    borderRadius: '99px',
-    background: 'var(--bg-hover)',
-    overflow: 'hidden',
-  },
-  creditFill: {
-    height: '100%',
-    borderRadius: '99px',
-    transition: 'width 0.6s ease',
-  },
-  creditWarn: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    fontSize: '12px',
-    color: '#f87171',
-  },
-  columns: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '20px',
-  },
-  panel: {
-    background: 'var(--bg-surface)',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius-lg)',
-    padding: '20px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '14px',
-  },
-  sectionHeader: {
-    display: 'flex',
-    alignItems: 'baseline',
-    gap: '10px',
-    paddingBottom: '12px',
-    borderBottom: '1px solid var(--border)',
-  },
-  sectionTitle: {
-    fontFamily: "'Syne', sans-serif",
-    fontSize: '15px',
-    fontWeight: 700,
-    color: 'var(--text-primary)',
-  },
-  sectionSub: {
-    fontSize: '12px',
-    color: 'var(--text-muted)',
-  },
-  list: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  empty: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '10px',
-    padding: '32px 16px',
-    color: 'var(--text-muted)',
-  },
-  emptyText: {
-    fontSize: '13px',
-    color: 'var(--text-muted)',
-    textAlign: 'center',
-  },
+  page: { display: 'flex', flexDirection: 'column', gap: '28px', paddingBottom: '40px' },
+  greeting: { opacity: 0 },
+  greetingTitle: { fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' },
+  greetingSub: { fontSize: '14px', color: 'var(--text-muted)' },
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' },
+  skeletonCard: { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px', display: 'flex', alignItems: 'flex-start', gap: '16px' },
+  creditBar: { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '10px' },
+  creditBarRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  creditBarLabel: { fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' },
+  creditBarPct: { fontFamily: "'Syne', sans-serif", fontSize: '14px', fontWeight: 700 },
+  creditTrack: { height: '6px', borderRadius: '99px', background: 'var(--bg-hover)', overflow: 'hidden' },
+  creditFill: { height: '100%', borderRadius: '99px', transition: 'width 0.6s ease' },
+  creditWarn: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#f87171' },
+  columns: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' },
+  panel: { background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' },
+  sectionHeader: { display: 'flex', alignItems: 'baseline', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid var(--border)' },
+  sectionTitle: { fontFamily: "'Syne', sans-serif", fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' },
+  sectionSub: { fontSize: '12px', color: 'var(--text-muted)' },
+  list: { display: 'flex', flexDirection: 'column', gap: '8px' },
+  empty: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '32px 16px', color: 'var(--text-muted)' },
+  emptyText: { fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center' },
 }
 
 const genStyles = {
-  row: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '10px 12px',
-    borderRadius: 'var(--radius-md)',
-    background: 'var(--bg-card)',
-    border: '1px solid var(--border)',
-    opacity: 0,
-  },
-  thumb: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '8px',
-    background: 'var(--bg-hover)',
-    border: '1px solid var(--border)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    flexShrink: 0,
-  },
-  img: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-  },
-  info: {
-    flex: 1,
-    minWidth: 0,
-  },
-  styleName: {
-    fontSize: '13px',
-    fontWeight: 500,
-    color: 'var(--text-primary)',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-  },
-  meta: {
-    fontSize: '12px',
-    color: 'var(--text-muted)',
-    marginTop: '2px',
-    textTransform: 'capitalize',
-  },
-  time: {
-    fontSize: '11px',
-    color: 'var(--text-muted)',
-    flexShrink: 0,
-  },
+  row: { display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--bg-card)', border: '1px solid var(--border)', opacity: 0 },
+  thumb: { width: '40px', height: '40px', borderRadius: '8px', background: 'var(--bg-hover)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 },
+  img: { width: '100%', height: '100%', objectFit: 'cover' },
+  info: { flex: 1, minWidth: 0 },
+  styleName: { fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  meta: { fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px', textTransform: 'capitalize' },
+  time: { fontSize: '11px', color: 'var(--text-muted)', flexShrink: 0 },
 }
-
-const playChime = () => {
-  const ctx = new AudioContext();
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.frequency.setValueAtTime(880, ctx.currentTime);
-  osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
-  gain.gain.setValueAtTime(0.3, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
-  osc.start(ctx.currentTime);
-  osc.stop(ctx.currentTime + 0.6);
-};
