@@ -7,7 +7,7 @@ const api = axios.create({
 
 // Attach token to every request
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('saloniq_token')
+  const token = localStorage.getItem('stylzap_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -19,8 +19,8 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('saloniq_token')
-      localStorage.removeItem('saloniq_salon')
+      localStorage.removeItem('stylzap_token')
+      localStorage.removeItem('stylzap_salon')
       window.location.href = '/login'
     }
     return Promise.reject(error)

@@ -2,24 +2,24 @@ import { create } from 'zustand'
 
 const useAuthStore = create((set) => ({
   salon: null,
-  token: localStorage.getItem('saloniq_token') || null,
-  isAuthenticated: !!localStorage.getItem('saloniq_token'),
+  token: localStorage.getItem('stylzap_token') || null,
+  isAuthenticated: !!localStorage.getItem('stylzap_token'),
 
   login: (salon, token) => {
-    localStorage.setItem('saloniq_token', token)
-    localStorage.setItem('saloniq_salon', JSON.stringify(salon))
+    localStorage.setItem('stylzap_token', token)
+    localStorage.setItem('stylzap_salon', JSON.stringify(salon))
     set({ salon, token, isAuthenticated: true })
   },
 
   logout: () => {
-    localStorage.removeItem('saloniq_token')
-    localStorage.removeItem('saloniq_salon')
+    localStorage.removeItem('stylzap_token')
+    localStorage.removeItem('stylzap_salon')
     set({ salon: null, token: null, isAuthenticated: false })
   },
 
   hydrate: () => {
-    const token = localStorage.getItem('saloniq_token')
-    const raw = localStorage.getItem('saloniq_salon')
+    const token = localStorage.getItem('stylzap_token')
+    const raw = localStorage.getItem('stylzap_salon')
     if (token && raw) {
       try {
         const salon = JSON.parse(raw)
