@@ -264,6 +264,27 @@ function getTimeOfDay() {
   return 'evening'
 }
 
+useEffect(() => {
+  const salonId = authStore.salon?.id;
+  if (!salonId) return;
+
+  const wsUrl = import.meta.env.VITE_API_URL
+    .replace('https://', 'wss://')
+    .replace('/api', '');
+
+  const ws = new WebSocket(`${wsUrl}?salonId=${salonId}`);
+
+  ws.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    if (data.event === 'new_booking') {
+      playChime();
+      // optionally re-fetch dashboard stats
+    }
+  };
+
+  return () => ws.close();
+}, []);
+
 const styles = {
   page: {
     display: 'flex',
@@ -445,3 +466,17 @@ const genStyles = {
     flexShrink: 0,
   },
 }
+
+const playChime = () => {
+  const ctx = new AudioContext();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.frequency.setValueAtTime(880, ctx.currentTime);
+  osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
+  gain.gain.setValueAtTime(0.3, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 0.6);
+};
