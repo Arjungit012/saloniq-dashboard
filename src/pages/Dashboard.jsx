@@ -1,8 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   IndianRupee,
-  Zap,
   Users,
   CalendarCheck,
   ImageIcon,
@@ -75,7 +74,7 @@ function CreditBar({ remaining, total }) {
   )
 }
 
-// ─── CHIME (defined outside component, no hooks needed) ───────────────────
+// ─── CHIME ────────────────────────────────────────────────────────────────
 function playChime() {
   try {
     const ctx = new AudioContext()
@@ -97,6 +96,7 @@ function playChime() {
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────
 export default function Dashboard() {
   const salon = useAuthStore((s) => s.salon)
+  const wsRef = useRef(null)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['dashboard', salon?.id],
@@ -108,46 +108,44 @@ export default function Dashboard() {
     refetchInterval: 60000,
   })
 
-  // ─── WEBSOCKET for new booking sound ────────────────────────────────────
-  const wsRef = useRef(null)
-  
+  // ─── WEBSOCKET ────────────────────────────────────────────────────────
   useEffect(() => {
-  if (!salon?.id) return
-  if (wsRef.current?.readyState === WebSocket.OPEN) return // already connected
-
-  let reconnectTimer
-
-  function connect() {
+    if (!salon?.id) return
     if (wsRef.current?.readyState === WebSocket.OPEN) return
 
-    wsRef.current = new WebSocket(`wss://api.stylzap.com?salonId=${salon.id}`)
+    let reconnectTimer
 
-    wsRef.current.onopen = () => console.log('🔌 WS connected')
+    function connect() {
+      if (wsRef.current?.readyState === WebSocket.OPEN) return
 
-    wsRef.current.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data)
-        if (msg.event === 'new_booking') {
-          playChime(audioCtxRef.current)
-          refetch()
-        }
-      } catch (err) {}
+      wsRef.current = new WebSocket(`wss://api.stylzap.com?salonId=${salon.id}`)
+
+      wsRef.current.onopen = () => console.log('🔌 WS connected')
+
+      wsRef.current.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data)
+          if (msg.event === 'new_booking') {
+            playChime()
+            refetch()
+          }
+        } catch (err) {}
+      }
+
+      wsRef.current.onclose = () => {
+        reconnectTimer = setTimeout(connect, 5000)
+      }
+
+      wsRef.current.onerror = () => wsRef.current.close()
     }
 
-    wsRef.current.onclose = () => {
-      reconnectTimer = setTimeout(connect, 5000)
+    connect()
+
+    return () => {
+      clearTimeout(reconnectTimer)
+      wsRef.current?.close()
     }
-
-    wsRef.current.onerror = () => wsRef.current.close()
-  }
-
-  connect()
-
-  return () => {
-    clearTimeout(reconnectTimer)
-    wsRef.current?.close()
-  }
-}, [salon?.id])
+  }, [salon?.id])
 
   if (isLoading) {
     return (
@@ -169,7 +167,7 @@ export default function Dashboard() {
 
   const { stats, todays_bookings = [], recent_generations = [] } = data || {}
   if (!stats) return null
-  
+
   const monthName = new Date().toLocaleString('en-IN', { month: 'long' })
 
   return (
@@ -230,7 +228,6 @@ export default function Dashboard() {
 
       {/* Two column layout */}
       <div style={styles.columns}>
-        {/* Today's Bookings */}
         <div style={styles.panel}>
           <SectionHeader
             title="Today's Bookings"
@@ -238,10 +235,7 @@ export default function Dashboard() {
           />
           <div style={styles.list}>
             {todays_bookings.length === 0 ? (
-              <EmptyState
-                icon={CalendarCheck}
-                message="No bookings scheduled for today"
-              />
+              <EmptyState icon={CalendarCheck} message="No bookings scheduled for today" />
             ) : (
               todays_bookings.map((b, i) => (
                 <BookingRow key={b.id} booking={b} index={i} />
@@ -250,18 +244,11 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Recent Generations */}
         <div style={styles.panel}>
-          <SectionHeader
-            title="Recent Generations"
-            sub="Last 5 AI hairstyles"
-          />
+          <SectionHeader title="Recent Generations" sub="Last 5 AI hairstyles" />
           <div style={styles.list}>
             {recent_generations.length === 0 ? (
-              <EmptyState
-                icon={ImageIcon}
-                message="No hairstyle generations yet"
-              />
+              <EmptyState icon={ImageIcon} message="No hairstyle generations yet" />
             ) : (
               recent_generations.map((g, i) => (
                 <GenerationRow key={g.id} gen={g} index={i} />
@@ -276,10 +263,7 @@ export default function Dashboard() {
 
 function GenerationRow({ gen, index }) {
   return (
-    <div
-      className="fade-up"
-      style={{ ...genStyles.row, animationDelay: `${index * 60}ms` }}
-    >
+    <div className="fade-up" style={{ ...genStyles.row, animationDelay: `${index * 60}ms` }}>
       <div style={genStyles.thumb}>
         {gen.output_image_url ? (
           <img
@@ -298,9 +282,7 @@ function GenerationRow({ gen, index }) {
           {gen.customer_name || gen.customer_phone} · {gen.face_shape}
         </div>
       </div>
-      <div style={genStyles.time}>
-        {timeAgo(gen.created_at)}
-      </div>
+      <div style={genStyles.time}>{timeAgo(gen.created_at)}</div>
     </div>
   )
 }
