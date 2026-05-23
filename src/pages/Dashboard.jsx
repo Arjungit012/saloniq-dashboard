@@ -173,7 +173,9 @@ export default function Dashboard() {
     )
   }
 
-  const { stats, todays_bookings, recent_generations } = data
+  const { stats, todays_bookings = [], recent_generations = [] } = data || {}
+  if (!stats) return null
+  
   const monthName = new Date().toLocaleString('en-IN', { month: 'long' })
 
   return (
