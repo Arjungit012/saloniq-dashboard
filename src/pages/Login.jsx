@@ -57,7 +57,7 @@ export default function Login() {
       <div style={styles.card}>
         {/* Header */}
         <div style={styles.header}>
-        <img src={logo} alt="StylZap" style={{ width: '100%', maxWidth: '260px', objectFit: 'contain', marginBottom: '16px' }} />
+        <img src={logo} alt="StylZap" style={{ width: '100%', maxWidth: '260px', objectFit: 'contain', marginBottom: '4px' }} />
          <p style={styles.subtitle}>Sign in to your salon dashboard</p>
         </div>
 
