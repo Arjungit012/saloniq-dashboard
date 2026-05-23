@@ -6,7 +6,7 @@ import api from '../api/axios'
 import toast from 'react-hot-toast'
 import logo from '../assets/stylzap-logo.png'
 import { Phone, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
-import logo from '../assets/stylzap-logo.png'
+
 
 
 export default function Login() {
