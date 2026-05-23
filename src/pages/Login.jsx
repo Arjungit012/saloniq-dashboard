@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Scissors, Phone, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
+//import { Scissors, Phone, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import api from '../api/axios'
 import toast from 'react-hot-toast'
+import logo from '../assets/stylzap-logo.png'
+import { Phone, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
+import logo from '../assets/stylzap-logo.png'
+
 
 export default function Login() {
   const [phone, setPhone] = useState('')
@@ -53,11 +57,8 @@ export default function Login() {
       <div style={styles.card}>
         {/* Header */}
         <div style={styles.header}>
-          <div style={styles.iconWrap}>
-            <Scissors size={22} color="#7c5cfc" strokeWidth={1.8} />
-          </div>
-          <h1 style={styles.title}>StylZap</h1>
-          <p style={styles.subtitle}>Sign in to your salon dashboard</p>
+        <img src={logo} alt="StylZap" style={{ height: '44px', objectFit: 'contain', marginBottom: '16px' }} />
+         <p style={styles.subtitle}>Sign in to your salon dashboard</p>
         </div>
 
         {/* Form */}

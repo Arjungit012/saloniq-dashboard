@@ -5,8 +5,8 @@ import {
   Zap,
   Settings,
   LogOut,
-  Scissors,
 } from 'lucide-react'
+import logo from '../../assets/stylzap-logo.png'
 import useAuthStore from '../../store/authStore'
 import toast from 'react-hot-toast'
 
@@ -32,13 +32,7 @@ export default function Sidebar() {
     <aside style={styles.sidebar}>
       {/* Logo */}
       <div style={styles.logo}>
-        <div style={styles.logoIcon}>
-          <Scissors size={18} color="#7c5cfc" />
-        </div>
-        <div>
-          <div style={styles.logoName}>StylZap</div>
-          <div style={styles.logoSub}>Dashboard</div>
-        </div>
+        <img src={logo} alt="StylZap" style={{ height: '28px', objectFit: 'contain' }} />
       </div>
 
       {/* Salon info pill */}
