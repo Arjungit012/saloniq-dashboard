@@ -109,49 +109,45 @@ export default function Dashboard() {
   })
 
   // ─── WEBSOCKET for new booking sound ────────────────────────────────────
+  const wsRef = useRef(null)
+  
   useEffect(() => {
-    if (!salon?.id) return
+  if (!salon?.id) return
+  if (wsRef.current?.readyState === WebSocket.OPEN) return // already connected
 
-    const wsUrl = 'wss://api.stylzap.com'
+  let reconnectTimer
 
-    let ws
-    let reconnectTimer
+  function connect() {
+    if (wsRef.current?.readyState === WebSocket.OPEN) return
 
-    function connect() {
-      ws = new WebSocket(`${wsUrl}?salonId=${salon.id}`)
+    wsRef.current = new WebSocket(`wss://api.stylzap.com?salonId=${salon.id}`)
 
-      ws.onopen = () => console.log('🔌 WS connected')
+    wsRef.current.onopen = () => console.log('🔌 WS connected')
 
-      ws.onmessage = (e) => {
-        try {
-          const msg = JSON.parse(e.data)
-          if (msg.event === 'new_booking') {
-            playChime()
-            refetch() // refresh today's bookings count
-          }
-        } catch (err) {
-          console.warn('WS parse error', err)
+    wsRef.current.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data)
+        if (msg.event === 'new_booking') {
+          playChime(audioCtxRef.current)
+          refetch()
         }
-      }
-
-      ws.onclose = () => {
-        console.log('🔌 WS closed — reconnecting in 5s')
-        reconnectTimer = setTimeout(connect, 5000) // auto-reconnect
-      }
-
-      ws.onerror = (err) => {
-        console.warn('🔌 WS error', err)
-        ws.close()
-      }
+      } catch (err) {}
     }
 
-    connect()
-
-    return () => {
-      clearTimeout(reconnectTimer)
-      ws?.close()
+    wsRef.current.onclose = () => {
+      reconnectTimer = setTimeout(connect, 5000)
     }
-  }, [salon?.id])
+
+    wsRef.current.onerror = () => wsRef.current.close()
+  }
+
+  connect()
+
+  return () => {
+    clearTimeout(reconnectTimer)
+    wsRef.current?.close()
+  }
+}, [salon?.id])
 
   if (isLoading) {
     return (
