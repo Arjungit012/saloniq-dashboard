@@ -112,9 +112,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!salon?.id) return
 
-    const wsUrl = import.meta.env.VITE_API_URL
-      .replace('https://', 'wss://')
-      .replace('/api', '')
+    const wsUrl = 'wss://api.stylzap.com'
 
     let ws
     let reconnectTimer
