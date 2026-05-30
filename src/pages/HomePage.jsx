@@ -341,7 +341,7 @@ export default function HomePage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const handleTrial = () => {
+  const handleTrial = async () => {
   if (!email || !email.includes('@')) return;
   if (!phone || phone.length < 10) return;
   try {
