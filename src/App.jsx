@@ -15,7 +15,7 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import useAdminStore from './store/adminStore'
 
 
-
+// ✅ Only dashboard/app pages go here — inside the sidebar shell
 function AppLayout() {
   return (
     <div className="app-layout">
@@ -24,13 +24,11 @@ function AppLayout() {
         <TopBar />
         <div className="page-inner">
           <Routes>
-            <Route path="/" element={<HomePage />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/bookings" element={<Bookings />} />
             <Route path="/credits" element={<Credits />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
-
           </Routes>
         </div>
       </div>
@@ -54,13 +52,16 @@ export default function App() {
 
   return (
     <Routes>
+      {/* ✅ PUBLIC routes — no auth needed */}
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/admin" element={<AdminLogin />} />
+      <Route path="/admin/dashboard" element={<AdminRoute />} />
+
+      {/* 🔒 PROTECTED routes — redirects to /login if not authenticated */}
       <Route element={<ProtectedRoute />}>
         <Route path="/*" element={<AppLayout />} />
       </Route>
-      <Route path="/admin" element={<AdminLogin />} />
-      <Route path="/admin/dashboard" element={<AdminRoute />} />
     </Routes>
   )
 }
