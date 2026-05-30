@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+// Add this at the top of HomePage.jsx with the other imports
+import logo from '../assets/stylzap-logo.png';
 
 const COLORS = {
   bg: "#0A0A0A",
@@ -375,7 +377,7 @@ export default function HomePage() {
       }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center" }}>
-            <img src="/src/assets/stylzap-logo.png" alt="StylZap" style={{ height: 36, width: "auto", objectFit: "contain" }} />
+            <img src={logo} alt="StylZap" style={{ height: 36, width: "auto", objectFit: "contain" }} />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
             {[["Features", "features"], ["How it works", "how-it-works"], ["Pricing", "pricing"], ["FAQ", "faq"]].map(([label, id]) => (
@@ -681,7 +683,7 @@ export default function HomePage() {
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 24px 36px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 40, flexWrap: "wrap", gap: 32 }}>
             <div>
-              <img src="/src/assets/stylzap-logo.png" alt="StylZap" style={{ height: 28, width: "auto", objectFit: "contain", marginBottom: 10 }} />
+              <img src={logo} alt="StylZap" style={{ height: 28, width: "auto", objectFit: "contain", marginBottom: 10 }} />
               <p style={{ fontSize: 13, color: COLORS.textDim, maxWidth: 220, lineHeight: 1.6 }}>WhatsApp AI hairstyle SaaS for Indian salons.</p>
             </div>
             <div style={{ display: "flex", gap: 64, flexWrap: "wrap" }}>
