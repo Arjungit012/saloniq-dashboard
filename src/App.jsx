@@ -5,6 +5,7 @@ import ProtectedRoute from './routes/ProtectedRoute'
 import Sidebar from './components/layout/Sidebar'
 import TopBar from './components/layout/TopBar'
 import Login from './pages/Login'
+import HomePage from "./pages/HomePage";
 import Dashboard from './pages/Dashboard'
 import Bookings from './pages/Bookings'
 import Credits from './pages/Credits'
@@ -12,6 +13,8 @@ import Settings from './pages/Settings'
 import AdminLogin from './pages/admin/AdminLogin'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import useAdminStore from './store/adminStore'
+
+
 
 function AppLayout() {
   return (
@@ -21,11 +24,13 @@ function AppLayout() {
         <TopBar />
         <div className="page-inner">
           <Routes>
+            <Route path="/" element={<HomePage />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/bookings" element={<Bookings />} />
             <Route path="/credits" element={<Credits />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
+
           </Routes>
         </div>
       </div>
@@ -49,6 +54,7 @@ export default function App() {
 
   return (
     <Routes>
+      <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<Login />} />
       <Route element={<ProtectedRoute />}>
         <Route path="/*" element={<AppLayout />} />
