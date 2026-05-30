@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import useAuthStore from './store/authStore'
 import ProtectedRoute from './routes/ProtectedRoute'
@@ -14,14 +14,17 @@ import AdminLogin from './pages/admin/AdminLogin'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import useAdminStore from './store/adminStore'
 
-
-// ✅ Only dashboard/app pages go here — inside the sidebar shell
 function AppLayout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
   return (
     <div className="app-layout">
-      <Sidebar />
+      {/* Sidebar receives open state + close handler */}
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
       <div className="main-content">
-        <TopBar />
+        {/* TopBar receives handler to open sidebar */}
+        <TopBar onMenuClick={() => setSidebarOpen(true)} />
         <div className="page-inner">
           <Routes>
             <Route path="/dashboard" element={<Dashboard />} />
@@ -32,6 +35,19 @@ function AppLayout() {
           </Routes>
         </div>
       </div>
+
+      {/* Mobile layout overrides */}
+      <style>{`
+        @media (max-width: 768px) {
+          .main-content {
+            margin-left: 0 !important;
+          }
+          .main-content > header,
+          .main-content > div > header {
+            left: 0 !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
@@ -52,13 +68,13 @@ export default function App() {
 
   return (
     <Routes>
-      {/* ✅ PUBLIC routes — no auth needed */}
+      {/* PUBLIC routes */}
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/admin" element={<AdminLogin />} />
       <Route path="/admin/dashboard" element={<AdminRoute />} />
 
-      {/* 🔒 PROTECTED routes — redirects to /login if not authenticated */}
+      {/* PROTECTED routes */}
       <Route element={<ProtectedRoute />}>
         <Route path="/*" element={<AppLayout />} />
       </Route>

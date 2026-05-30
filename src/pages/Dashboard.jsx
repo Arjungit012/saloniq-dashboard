@@ -74,7 +74,6 @@ function CreditBar({ remaining, total }) {
   )
 }
 
-// ─── CHIME ────────────────────────────────────────────────────────────────
 function playChime() {
   try {
     const ctx = new AudioContext()
@@ -93,7 +92,6 @@ function playChime() {
   }
 }
 
-// ─── MAIN COMPONENT ───────────────────────────────────────────────────────
 export default function Dashboard() {
   const salon = useAuthStore((s) => s.salon)
   const wsRef = useRef(null)
@@ -108,7 +106,6 @@ export default function Dashboard() {
     refetchInterval: 60000,
   })
 
-  // ─── WEBSOCKET ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!salon?.id) return
     if (wsRef.current?.readyState === WebSocket.OPEN) return
@@ -117,34 +114,20 @@ export default function Dashboard() {
 
     function connect() {
       if (wsRef.current?.readyState === WebSocket.OPEN) return
-
       wsRef.current = new WebSocket(`wss://api.stylzap.com?salonId=${salon.id}`)
-
       wsRef.current.onopen = () => console.log('🔌 WS connected')
-
       wsRef.current.onmessage = (e) => {
         try {
           const msg = JSON.parse(e.data)
-          if (msg.event === 'new_booking') {
-            playChime()
-            refetch()
-          }
+          if (msg.event === 'new_booking') { playChime(); refetch() }
         } catch (err) {}
       }
-
-      wsRef.current.onclose = () => {
-        reconnectTimer = setTimeout(connect, 5000)
-      }
-
+      wsRef.current.onclose = () => { reconnectTimer = setTimeout(connect, 5000) }
       wsRef.current.onerror = () => wsRef.current.close()
     }
 
     connect()
-
-    return () => {
-      clearTimeout(reconnectTimer)
-      wsRef.current?.close()
-    }
+    return () => { clearTimeout(reconnectTimer); wsRef.current?.close() }
   }, [salon?.id])
 
   if (isLoading) {
@@ -171,93 +154,80 @@ export default function Dashboard() {
   const monthName = new Date().toLocaleString('en-IN', { month: 'long' })
 
   return (
-    <div style={styles.page}>
-      {/* Greeting */}
-      <div className="fade-up" style={styles.greeting}>
-        <h1 style={styles.greetingTitle}>
-          Good {getTimeOfDay()}, {salon?.owner_name?.split(' ')[0]} 👋
-        </h1>
-        <p style={styles.greetingSub}>
-          Here's what's happening at <strong>{salon?.name}</strong> today.
-        </p>
-      </div>
-
-      {/* Stats Grid */}
-      <div style={styles.statsGrid}>
-        <StatCard
-          label="Revenue this month"
-          value={`₹${stats.revenue_this_month.toLocaleString('en-IN')}`}
-          sub={monthName}
-          icon={IndianRupee}
-          color="green"
-          delay={0}
-        />
-        <StatCard
-          label="AI Generations"
-          value={stats.generations_this_month}
-          sub={`${monthName} · ₹${stats.generations_this_month * 7} cost`}
-          icon={ImageIcon}
-          color="purple"
-          delay={80}
-        />
-        <StatCard
-          label="Total Customers"
-          value={stats.total_customers}
-          sub="All time"
-          icon={Users}
-          color="gold"
-          delay={160}
-        />
-        <StatCard
-          label="Bookings"
-          value={stats.bookings_this_month}
-          sub={monthName}
-          icon={CalendarCheck}
-          color="red"
-          delay={240}
-        />
-      </div>
-
-      {/* Credit Bar */}
-      <div className="fade-up" style={{ animationDelay: '300ms', opacity: 0 }}>
-        <CreditBar
-          remaining={stats.credits_remaining}
-          total={stats.credits_total}
-        />
-      </div>
-
-      {/* Two column layout */}
-      <div style={styles.columns}>
-        <div style={styles.panel}>
-          <SectionHeader
-            title="Today's Bookings"
-            sub={`${todays_bookings.length} appointment${todays_bookings.length !== 1 ? 's' : ''}`}
-          />
-          <div style={styles.list}>
-            {todays_bookings.length === 0 ? (
-              <EmptyState icon={CalendarCheck} message="No bookings scheduled for today" />
-            ) : (
-              todays_bookings.map((b, i) => (
-                <BookingRow key={b.id} booking={b} index={i} />
-              ))
-            )}
-          </div>
+    <>
+      <div style={styles.page}>
+        {/* Greeting */}
+        <div className="fade-up" style={styles.greeting}>
+          <h1 style={styles.greetingTitle}>
+            Good {getTimeOfDay()}, {salon?.owner_name?.split(' ')[0]} 👋
+          </h1>
+          <p style={styles.greetingSub}>
+            Here's what's happening at <strong>{salon?.name}</strong> today.
+          </p>
         </div>
 
-        <div style={styles.panel}>
-          <SectionHeader title="Recent Generations" sub="Last 5 AI hairstyles" />
-          <div style={styles.list}>
-            {recent_generations.length === 0 ? (
-              <EmptyState icon={ImageIcon} message="No hairstyle generations yet" />
-            ) : (
-              recent_generations.map((g, i) => (
-                <GenerationRow key={g.id} gen={g} index={i} />
-              ))
-            )}
+        {/* Stats Grid */}
+        <div style={styles.statsGrid}>
+          <StatCard label="Revenue this month" value={`₹${stats.revenue_this_month.toLocaleString('en-IN')}`} sub={monthName} icon={IndianRupee} color="green" delay={0} />
+          <StatCard label="AI Generations" value={stats.generations_this_month} sub={`${monthName} · ₹${stats.generations_this_month * 7} cost`} icon={ImageIcon} color="purple" delay={80} />
+          <StatCard label="Total Customers" value={stats.total_customers} sub="All time" icon={Users} color="gold" delay={160} />
+          <StatCard label="Bookings" value={stats.bookings_this_month} sub={monthName} icon={CalendarCheck} color="red" delay={240} />
+        </div>
+
+        {/* Credit Bar */}
+        <div className="fade-up" style={{ animationDelay: '300ms', opacity: 0 }}>
+          <CreditBar remaining={stats.credits_remaining} total={stats.credits_total} />
+        </div>
+
+        {/* Two column → single column on mobile */}
+        <div style={styles.columns}>
+          <div style={styles.panel}>
+            <SectionHeader
+              title="Today's Bookings"
+              sub={`${todays_bookings.length} appointment${todays_bookings.length !== 1 ? 's' : ''}`}
+            />
+            <div style={styles.list}>
+              {todays_bookings.length === 0 ? (
+                <EmptyState icon={CalendarCheck} message="No bookings scheduled for today" />
+              ) : (
+                todays_bookings.map((b, i) => <BookingRow key={b.id} booking={b} index={i} />)
+              )}
+            </div>
+          </div>
+
+          <div style={styles.panel}>
+            <SectionHeader title="Recent Generations" sub="Last 5 AI hairstyles" />
+            <div style={styles.list}>
+              {recent_generations.length === 0 ? (
+                <EmptyState icon={ImageIcon} message="No hairstyle generations yet" />
+              ) : (
+                recent_generations.map((g, i) => <GenerationRow key={g.id} gen={g} index={i} />)
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Mobile responsive styles */}
+      <style>{`
+        @media (max-width: 768px) {
+          .dashboard-columns {
+            grid-template-columns: 1fr !important;
+          }
+          .dashboard-stats {
+            grid-template-columns: 1fr 1fr !important;
+          }
+          .dashboard-greeting h1 {
+            font-size: 20px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .dashboard-stats {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+    </>
   )
 }
 
@@ -266,21 +236,14 @@ function GenerationRow({ gen, index }) {
     <div className="fade-up" style={{ ...genStyles.row, animationDelay: `${index * 60}ms` }}>
       <div style={genStyles.thumb}>
         {gen.output_image_url ? (
-          <img
-            src={gen.output_image_url}
-            alt={gen.hairstyle_name}
-            style={genStyles.img}
-            onError={(e) => { e.target.style.display = 'none' }}
-          />
+          <img src={gen.output_image_url} alt={gen.hairstyle_name} style={genStyles.img} onError={(e) => { e.target.style.display = 'none' }} />
         ) : (
           <ImageIcon size={16} color="var(--text-muted)" />
         )}
       </div>
       <div style={genStyles.info}>
         <div style={genStyles.styleName}>{gen.hairstyle_name || 'Hairstyle'}</div>
-        <div style={genStyles.meta}>
-          {gen.customer_name || gen.customer_phone} · {gen.face_shape}
-        </div>
+        <div style={genStyles.meta}>{gen.customer_name || gen.customer_phone} · {gen.face_shape}</div>
       </div>
       <div style={genStyles.time}>{timeAgo(gen.created_at)}</div>
     </div>
@@ -309,15 +272,17 @@ const styles = {
   greeting: { opacity: 0 },
   greetingTitle: { fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' },
   greetingSub: { fontSize: '14px', color: 'var(--text-muted)' },
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' },
+  // className used for mobile override via <style> tag
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' },
   skeletonCard: { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px', display: 'flex', alignItems: 'flex-start', gap: '16px' },
   creditBar: { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '10px' },
-  creditBarRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  creditBarRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' },
   creditBarLabel: { fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' },
   creditBarPct: { fontFamily: "'Syne', sans-serif", fontSize: '14px', fontWeight: 700 },
   creditTrack: { height: '6px', borderRadius: '99px', background: 'var(--bg-hover)', overflow: 'hidden' },
   creditFill: { height: '100%', borderRadius: '99px', transition: 'width 0.6s ease' },
   creditWarn: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#f87171' },
+  // 2-col on desktop, 1-col on mobile via media query class
   columns: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' },
   panel: { background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' },
   sectionHeader: { display: 'flex', alignItems: 'baseline', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid var(--border)' },

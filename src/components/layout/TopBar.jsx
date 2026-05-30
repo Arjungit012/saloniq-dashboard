@@ -1,4 +1,5 @@
 import { useLocation } from 'react-router-dom'
+import { Menu } from 'lucide-react'
 import useAuthStore from '../../store/authStore'
 
 const pageTitles = {
@@ -8,7 +9,8 @@ const pageTitles = {
   '/settings': 'Settings',
 }
 
-export default function TopBar() {
+// onMenuClick is called from AppLayout to open the sidebar drawer
+export default function TopBar({ onMenuClick }) {
   const { pathname } = useLocation()
   const salon = useAuthStore((s) => s.salon)
 
@@ -19,20 +21,45 @@ export default function TopBar() {
   })
 
   return (
-    <header style={styles.topbar}>
-      <div>
-        <h2 style={styles.title}>{pageTitles[pathname] || ''}</h2>
-        <p style={styles.date}>{today}</p>
-      </div>
-      <div style={styles.right}>
-        <div style={styles.creditsBadge}>
-          <span style={styles.creditsLabel}>Credits left</span>
-          <span style={styles.creditsVal}>
-            {salon?.ai_credits_remaining ?? '—'}
-          </span>
+    <>
+      <header style={styles.topbar}>
+        {/* Hamburger — mobile only */}
+        <button
+          className="topbar-hamburger"
+          onClick={onMenuClick}
+          style={styles.hamburger}
+          aria-label="Open menu"
+        >
+          <Menu size={20} />
+        </button>
+
+        <div>
+          <h2 style={styles.title}>{pageTitles[pathname] || ''}</h2>
+          <p style={styles.date} className="topbar-date">{today}</p>
         </div>
-      </div>
-    </header>
+
+        <div style={styles.right}>
+          <div style={styles.creditsBadge}>
+            <span style={styles.creditsLabel} className="credits-label">Credits left</span>
+            <span style={styles.creditsVal}>
+              {salon?.ai_credits_remaining ?? '—'}
+            </span>
+          </div>
+        </div>
+      </header>
+
+      <style>{`
+        .topbar-hamburger { display: none !important; }
+
+        @media (max-width: 768px) {
+          .topbar-hamburger {
+            display: flex !important;
+          }
+          .topbar-date { display: none; }
+          .credits-label { display: none; }
+        }
+      `}</style>
+    </>
   )
 }
 
@@ -49,8 +76,21 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '0 32px',
+    padding: '0 24px',
     zIndex: 90,
+  },
+  hamburger: {
+    display: 'none',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '36px',
+    height: '36px',
+    borderRadius: '8px',
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    color: 'var(--text-secondary)',
+    cursor: 'pointer',
+    flexShrink: 0,
   },
   title: {
     fontFamily: "'Syne', sans-serif",
